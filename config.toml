@@ -1,0 +1,5 @@
+algorithm = "round-robin" 
+backend_pool = "127.0.0.1:7879,127.0.0.1:7876"
+
+
+
