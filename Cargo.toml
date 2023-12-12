@@ -1,5 +1,5 @@
 [package]
-name = "rr-lb"
+name = "simple-lb"
 version = "0.1.0"
 edition = "2021"
 

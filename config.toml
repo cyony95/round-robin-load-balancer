@@ -1,5 +1,5 @@
-algorithm = "round-robin" 
-backend_pool = "127.0.0.1:7879,127.0.0.1:7876"
-
+algorithm = "round-robin"                                  # Options available: round-robin, weighted-round-robin
+backend_pool = "127.0.0.1:7879,127.0.0.1:7876"             # IP:port
+weights = "1,1"                                            # Only applies for weighted-round-robin, ignored for round-robin
 
 
