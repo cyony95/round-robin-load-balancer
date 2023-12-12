@@ -1,6 +1,8 @@
-use std::net::{TcpStream, TcpListener};
-use std::io::prelude::*;
 use serde::Deserialize;
+use std::error::Error;
+use std::io::prelude::*;
+use std::net::{TcpListener, TcpStream};
+use std::process;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -8,26 +10,45 @@ pub struct Config {
     pub backend_pool: String,
 }
 
-
-pub fn proxy(mut stream: TcpStream, backend_addr: &str) {
-    let mut backend_stream = TcpStream::connect(backend_addr).unwrap();
+pub fn proxy(mut stream: TcpStream, backend_addr: &str) -> Result<(), Box<dyn Error>> {
+    let mut backend_stream = TcpStream::connect(backend_addr).unwrap_or_else(|err| {
+        eprintln!("Cannot connect to the backend: {err}");
+        process::exit(1);
+    });
     println!("Forwarding request to: {:#?}", backend_addr);
     let mut buffer = [0; 1024];
-    let bytes = stream.read(&mut buffer).unwrap();
-    backend_stream.write_all(&buffer[..bytes]).unwrap();
-    backend_stream.flush().unwrap();
+    let bytes = stream.read(&mut buffer)?;
+    backend_stream.write_all(&buffer[..bytes])?;
+    backend_stream.flush()?;
     let mut buffer = [0; 1024];
-    let bytes_read = backend_stream.read(&mut buffer).unwrap();
-    stream.write_all(&buffer[..bytes_read]).unwrap();
-    stream.flush().unwrap();
+    let bytes_read = backend_stream.read(&mut buffer)?;
+    stream.write_all(&buffer[..bytes_read])?;
+    stream.flush()?;
+    Ok(())
 }
 
-pub fn round_robin (config: Config) {
+pub fn round_robin(config: Config) {
     let mut backend_list = config.backend_pool.split(',').cycle();
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap_or_else(|err| {
+        eprintln!("Cannot bind listener to the address: {err}");
+        process::exit(1);
+    });
     println!("Chosen algorithm is {:?}", config.algorithm);
     for stream in listener.incoming() {
-        let stream = stream.unwrap();
-        proxy(stream, backend_list.next().unwrap()); // cycles through the given list of backends  backend_list.iter().cycle().next().unwrap()
+        match stream {
+            Ok(stream) => {
+                if let Err(e) = proxy(stream, backend_list.next().unwrap()) {
+                    // unwrap() is fine, since the iterator is cyclic, it will never return None
+                    eprintln!("Proxy encountered an error: {e}");
+                }
+            }
+            Err(e) => {
+                eprintln!("Connection failed: {e}");
+            }
+        }
     }
+}
+
+pub fn weighted_round_robin(config: Config) {
+    todo!();
 }
