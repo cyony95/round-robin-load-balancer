@@ -15,15 +15,19 @@ pub fn proxy(mut stream: TcpStream, backend_addr: &str) -> Result<(), Box<dyn Er
         eprintln!("Cannot connect to the backend: {err}");
         process::exit(1);
     });
-    println!("Forwarding request to: {:#?}", backend_addr);
     let mut buffer = [0; 1024];
-    let bytes = stream.read(&mut buffer)?;
+
+    println!("Forwarding request to: {:#?}", backend_addr);
+
+    let mut bytes = stream.read(&mut buffer)?;
     backend_stream.write_all(&buffer[..bytes])?;
     backend_stream.flush()?;
-    let mut buffer = [0; 1024];
-    let bytes_read = backend_stream.read(&mut buffer)?;
-    stream.write_all(&buffer[..bytes_read])?;
+
+    buffer = [0; 1024];
+    bytes = backend_stream.read(&mut buffer)?;
+    stream.write_all(&buffer[..bytes])?;
     stream.flush()?;
+
     Ok(())
 }
 
@@ -33,6 +37,7 @@ pub fn round_robin(config: Config) {
         eprintln!("Cannot bind listener to the address: {err}");
         process::exit(1);
     });
+
     println!("Chosen algorithm is {:?}", config.algorithm);
     for stream in listener.incoming() {
         match stream {
